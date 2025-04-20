@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CrowdSense</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <h1><i class="fas fa-users"></i> CrowdSense Dashboard</h1>
+
+  <div id="zoneSelector">
+    <label for="zoneCount">How many zones?</label>
+    <input type="number" id="zoneCount" min="1" max="10" value="3">
+    <button onclick="createZoneInputs()">Next</button>
+  </div>
+
+  <div id="zoneNameInputs" style="margin-top: 20px;"></div>
+  <div id="startBtn" style="display: none; margin-top: 10px;">
+    <button onclick="initializeZones()">Start Monitoring</button>
+  </div>
+
+  <div id="zoneContainer" style="display: none; margin-top: 30px;"></div>
+  <div id="densityIndicator" class="density-box" style="display: none;">Loading...</div>
+
+  <script>
+    let zoneCount = 0;
+    let zoneNames = [];
+
+    function createZoneInputs() {
+      const count = parseInt(document.getElementById('zoneCount').value);
+      const inputContainer = document.getElementById('zoneNameInputs');
+      inputContainer.innerHTML = '';
+
+      for (let i = 0; i < count; i++) {
+        inputContainer.innerHTML += `
+          <input type="text" placeholder="Zone ${i + 1} name" id="zoneInput${i}" required>
+        `;
+      }
+
+      document.getElementById('startBtn').style.display = 'block';
+    }
+
+    function initializeZones() {
+      zoneCount = parseInt(document.getElementById('zoneCount').value);
+      zoneNames = [];
+
+      for (let i = 0; i < zoneCount; i++) {
+        const zoneName = document.getElementById(`zoneInput${i}`).value.trim();
+        zoneNames.push(zoneName || `Zone ${i + 1}`);
+      }
+
+      const container = document.getElementById('zoneContainer');
+      container.innerHTML = '';
+      container.style.display = 'block';
+      document.getElementById('densityIndicator').style.display = 'block';
+
+      zoneNames.forEach((zoneName) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'zone-card';
+        cardDiv.id = `Zone ${zoneName}`;
+        cardDiv.innerHTML = `
+          <div class="zone-icon">
+            <i class="fas fa-map-marker-alt"></i>
+          </div>
+          <div class="zone-name">${zoneName}</div>
+          <div class="zone-status"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>
+        `;
+        container.appendChild(cardDiv);
+      });
+
+      updateData();
+      setInterval(updateData, 2000);
+    }
+
+    async function updateData() {
+      const res = await fetch('/data');
+      const data = await res.json();
+
+      let total = 0;
+
+      for (let i = 0; i < zoneCount; i++) {
+        const zone = zoneNames[i];
+        const div = document.getElementById(`Zone ${zone}`);
+        const count = data[zone] !== undefined ? data[zone] : 0;
+
+        div.querySelector('.zone-status').innerText = `${zone}: ${count} people`;
+        total += count;
+
+        if (count < 40) {
+          div.style.backgroundColor = "green";
+        } else if (count < 80) {
+          div.style.backgroundColor = "orange";
+        } else {
+          div.style.backgroundColor = "red";
+        }
+      }
+
+      const densityDiv = document.getElementById('densityIndicator');
+      if (total < 100) {
+        densityDiv.innerText = "Low Density";
+        densityDiv.style.backgroundColor = "green";
+      } else if (total < 200) {
+        densityDiv.innerText = "Moderate Density";
+        densityDiv.style.backgroundColor = "orange";
+      } else {
+        densityDiv.innerText = "High Density";
+        densityDiv.style.backgroundColor = "red";
+      }
+    }
+  </script>
+</body>
+</html>
